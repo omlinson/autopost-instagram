@@ -10,7 +10,14 @@ def sai_image_to_video(api_key, image_path, iterations):
     for i in range(iterations):
 
         i+=1
+
+        cfg_scale = ((1.8/2)*(1+i/(iterations-1))) #default 1.8 max 10
+        motion_bucket_id = 127*2 #max 255
+
+        
+
         print(f"Generating video {i}...")
+        print(f"cfg_scale: {cfg_scale}, motion_bucket_id: {motion_bucket_id}")
 
         response = requests.post(
             f"https://api.stability.ai/v2alpha/generation/image-to-video",
@@ -18,8 +25,8 @@ def sai_image_to_video(api_key, image_path, iterations):
             files={"image": open(image_path, "rb")},
             data={
                 "seed": 0,
-                "cfg_scale": 1.8*1,
-                "motion_bucket_id": 127*2
+                "cfg_scale": {cfg_scale},
+                "motion_bucket_id": {motion_bucket_id}
             },
         )
 
@@ -29,8 +36,8 @@ def sai_image_to_video(api_key, image_path, iterations):
         print("Generation ID:", response.json().get('id'))
 
         generation_id = response.json().get('id')
-
-        video_paths.append(retrieve_video(api_key, generation_id, i))
+        retrieve_video(api_key, generation_id, i)
+        video_paths.append(f"./temp/video_{i}.mp4")
         get_last_frame(f"./temp/video_{i}.mp4", i)
         image_path = f"./temp/lastframe_{i}.jpg"
     
@@ -61,8 +68,8 @@ def retrieve_video(api_key, generation_id, iteration):
         retrieve_video(api_key, generation_id, iteration)
     elif response.status_code == 200:
         print("Generation complete!")
+        print("Generation seed:", response.headers.get('seed'))
         with open(f"./temp/video_{iteration}.mp4", 'wb') as file:
             file.write(response.content)
-            return f"./temp/video_{iteration}.mp4"
     else:
         raise Exception(str(response.json()))
